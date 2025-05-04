@@ -1,3 +1,17 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #000; /* Optional: match your aesthetic */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Full screen height */
+  overflow: hidden;
+}
+
+
+
+
 .player {
   background: #0d0d0d;
   border: 1px solid #ffffff;
