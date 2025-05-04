@@ -7,16 +7,17 @@ function createPlayer(beforeSrc, afterSrc) {
   const beforeAudio = new Audio(beforeSrc);
   const afterAudio = new Audio(afterSrc);
 
+  beforeAudio.preload = "auto";
+  afterAudio.preload = "auto";
+
   let currentTrack = "before";
-const playPauseBtn = document.createElement("button");
+  const playPauseBtn = document.createElement("button");
+  playPauseBtn.className = "playPause";
 
-playPauseBtn.className = "playPause";
+  const playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+  const pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5h-4z"/></svg>`;
 
-const playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-
-const pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5h-4z"/></svg>`;
-
-playPauseBtn.innerHTML = playIcon;
+  playPauseBtn.innerHTML = playIcon;
 
   const toggleBtn = document.createElement("button");
   toggleBtn.className = "toggleTrackBtn before";
@@ -57,64 +58,60 @@ playPauseBtn.innerHTML = playIcon;
   beforeAudio.volume = volumeSlider.value;
   afterAudio.volume = volumeSlider.value;
 
-volumeSlider.addEventListener("input", () => {
-  beforeAudio.volume = afterAudio.volume = volumeSlider.value;
+  volumeSlider.addEventListener("input", () => {
+    beforeAudio.volume = afterAudio.volume = volumeSlider.value;
+    volumeSlider.style.setProperty('--val', `${volumeSlider.value * 100}%`);
+  });
   volumeSlider.style.setProperty('--val', `${volumeSlider.value * 100}%`);
-});
-volumeSlider.style.setProperty('--val', `${volumeSlider.value * 100}%`);
 
+  // Keep both tracks muted properly at start
+  beforeAudio.muted = false;
+  afterAudio.muted = true;
 
-// Play/Pause toggle
-playPauseBtn.addEventListener("click", () => {
-  const currentAudio = currentTrack === "before" ? beforeAudio : afterAudio;
-  const otherAudio = currentTrack === "before" ? afterAudio : beforeAudio;
+  // Play/Pause toggle
+  playPauseBtn.addEventListener("click", () => {
+    if (beforeAudio.paused || afterAudio.paused) {
+      beforeAudio.play();
+      afterAudio.play();
+      playPauseBtn.innerHTML = pauseIcon;
+    } else {
+      beforeAudio.pause();
+      afterAudio.pause();
+      playPauseBtn.innerHTML = playIcon;
+    }
+  });
 
-  if (currentAudio.paused) {
-    otherAudio.pause(); // ensure other track is paused
-    currentAudio.play();
-    playPauseBtn.innerHTML = pauseIcon;
-  } else {
-    currentAudio.pause();
-    playPauseBtn.innerHTML = playIcon;
-  }
-});
+  // Toggle track view (mute/unmute only)
+  toggleBtn.addEventListener("click", () => {
+    currentTrack = currentTrack === "before" ? "after" : "before";
 
-// Toggle track view
-toggleBtn.addEventListener("click", () => {
-  const fromAudio = currentTrack === "before" ? beforeAudio : afterAudio;
-  const toAudio = currentTrack === "before" ? afterAudio : beforeAudio;
+    beforeAudio.muted = currentTrack === "after";
+    afterAudio.muted = currentTrack === "before";
 
-  const wasPlaying = !fromAudio.paused;
-  const currentTime = fromAudio.currentTime;
+    toggleBtn.classList.toggle("before");
+    toggleBtn.classList.toggle("after");
+    toggleBtn.innerText = currentTrack.charAt(0).toUpperCase() + currentTrack.slice(1);
+    player.classList.toggle("after");
 
-  fromAudio.pause();
-  toAudio.currentTime = currentTime;
-  if (wasPlaying) {
-    toAudio.play();
-  }
-
-  currentTrack = currentTrack === "before" ? "after" : "before";
-  toggleBtn.classList.toggle("before");
-  toggleBtn.classList.toggle("after");
-  toggleBtn.innerText = currentTrack.charAt(0).toUpperCase() + currentTrack.slice(1);
-  player.classList.toggle("after");
-
-  playPauseBtn.innerHTML = toAudio.paused ? playIcon : pauseIcon;
-});
-
+    // Maintain correct icon
+    const activeAudio = currentTrack === "before" ? beforeAudio : afterAudio;
+    playPauseBtn.innerHTML = activeAudio.paused ? playIcon : pauseIcon;
+  });
 
   // Progress bar update
   function updateProgress() {
     const audio = currentTrack === "before" ? beforeAudio : afterAudio;
-const percent = (audio.currentTime / audio.duration) * 100;
-progress.value = percent || 0;
-progress.style.background = `linear-gradient(to right, #ffffff ${percent}%, #333 ${percent}%)`;
-
+    if (audio.duration) {
+      const percent = (audio.currentTime / audio.duration) * 100;
+      progress.value = percent || 0;
+      progress.style.background = `linear-gradient(to right, #ffffff ${percent}%, #333 ${percent}%)`;
+      timestamp.textContent = formatTime(audio.currentTime);
+    }
     requestAnimationFrame(updateProgress);
   }
   requestAnimationFrame(updateProgress);
 
-  // Seek
+  // Seek both tracks (stay in sync)
   progress.addEventListener("input", () => {
     const seekTime = (progress.value / 100) * beforeAudio.duration;
     beforeAudio.currentTime = seekTime;
